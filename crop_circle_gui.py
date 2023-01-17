@@ -21,143 +21,152 @@ import os
 
 from cropping_funcs import *
 
-def process_and_display_image():
-    filepath = inp.get()
-    int_if_not_empty = lambda s,empty=0 : int(s) if s else empty
-    if filepath and os.path.exists(filepath):
-        processed_img = process_image(filepath,working_scale=working_scale_slider.get(),
-                                      post_working_scale=processing_scale_slider.get(),
-                                      param1=int_if_not_empty(param1_entry.get()),param2=int_if_not_empty(param2_entry.get()),
-                                      output_border_width=int_if_not_empty(border_width_entry.get(),None))
-        if processed_img is not None:
-            root.processed_img = processed_img
-            w = int(0.9*canv.winfo_width())
-            img = ImageTk.PhotoImage(image=Image.fromarray(processed_img).resize((w,w)))
-            msgs.itemconfig(text_placeholder,text="")
-            canv.itemconfig(img_placeholder,image=img)
-            root.image = img # prevent garbage collection
+class GUI(Tk):
+    def __init__(self):
+        super().__init__()
+        self.geometry("700x700")
+
+        # bind enter/return key to
+        self.bind("<Return>",lambda event=None : self.process_and_display_image())
+
+        self.inputs_frame = Frame(self,bg="lightgrey",borderwidth=5)
+        self.inputs_frame.columnconfigure(0,weight=1)
+        self.inputs_frame.columnconfigure(0,weight=3)
+        self.inputs_frame.place(relheight=1,relwidth=0.3,relx=0.7,y=0)
+
+        self.l_input = Label(self.inputs_frame,text="Input Filepath:",font=("bold"))
+        self.inp = Entry(self.inputs_frame)
+
+        self.btn = Button(self.inputs_frame,text="Process image",width=10,height=5,command=self.process_and_display_image)
+
+        self.processing_options = Label(self.inputs_frame,text="Processing Params",font=("bold"))
+
+        self.l_working_scale = Label(self.inputs_frame,text="Working Scale:")
+        self.working_scale_slider = Scale(self.inputs_frame,from_=0.05,to=1,resolution=0.05,orient=HORIZONTAL)
+        self.working_scale_slider.set(0.2)
+
+        self.l_processing_scale = Label(self.inputs_frame,text="Processing Scale\n(times working scale):")
+        self.processing_scale_slider = Scale(self.inputs_frame,from_=0.05,to=1,resolution=0.05,orient=HORIZONTAL)
+        self.processing_scale_slider.set(0.6)
+
+        allow_only = lambda allow : (lambda char : all([c in list(allow) for c in char]))
+        allow_int_only = (self.register(allow_only("1234567890")),"%S")
+
+        self.l_border_width = Label(self.inputs_frame,text="Output Border Width (px):")
+        self.border_width_entry = Entry(self.inputs_frame,validate="key",vcmd=allow_int_only)
+        self.border_width_entry.insert(0,"4")
+
+        self.advanced_options = Label(self.inputs_frame,text="Advanced",font=("bold"))
+
+        self.l_param1 = Label(self.inputs_frame,text="Hough Circle Param1:")
+        self.param1_entry = Entry(self.inputs_frame,validate="key",vcmd=allow_int_only)
+        self.param1_entry.insert(0,"5")
+
+        self.l_param2 = Label(self.inputs_frame,text="Hough Circle Param2:")
+        self.param2_entry = Entry(self.inputs_frame,validate="key",vcmd=allow_int_only)
+        self.param2_entry.insert(0,"50")
+
+        self.l_output = Label(self.inputs_frame,text="Output Filepath:",font=("bold"))
+        self.out = Entry(self.inputs_frame)
+
+        self.btn_out = Button(self.inputs_frame,text="Save image",width=10,height=5,command=self.check_save)
+
+        input_widget_list = [self.l_input,self.inp,self.btn,self.processing_options,self.l_working_scale,self.working_scale_slider,self.l_processing_scale,self.processing_scale_slider,self.l_border_width,self.border_width_entry,self.advanced_options,self.l_param1,self.param1_entry,self.l_param2,self.param2_entry,self.l_output,self.out,self.btn_out]
+        self.stack_widgets(input_widget_list)
+
+        self.outputs_frame = Frame(self,bg="lightblue",borderwidth=5)
+        self.outputs_frame.columnconfigure(0,weight=1)
+        self.outputs_frame.columnconfigure(0,weight=3)
+        self.outputs_frame.place(relheight=1,relwidth=0.7,relx=0,y=0)
+
+        self.l_output = Label(self.outputs_frame,text="Output",bg="lightblue")
+        self.update_idletasks()
+        w,h = self.outputs_frame.winfo_width(),self.outputs_frame.winfo_height()
+        self.canv = Canvas(self.outputs_frame,width=0.9*w,height=0.6*h,bg="white")
+
+        self.l_msg = Label(self.outputs_frame,text="Messages",bg="lightblue")
+        self.msg = Canvas(self.outputs_frame,width=0.9*w,height=0.2*h,bg="white")
+
+        output_widget_list = [self.l_output,self.canv,self.l_msg,self.msg]
+        self.stack_widgets(output_widget_list)
+
+        self.update_idletasks()
+        wc,hc = self.canv.winfo_width(),self.canv.winfo_height()
+        self.img_placeholder = self.canv.create_image(wc/2,hc/2,anchor=CENTER)
+        wm,hm = self.msg.winfo_width(),self.msg.winfo_height()
+        self.text_placeholder = self.msg.create_text(wm/2,hm/2,anchor=CENTER)
+
+        self.protocol("WM_DELETE_WINDOW",self.destroy)
+
+    def process_and_display_image(self):
+        filepath = self.inp.get()
+        int_if_not_empty = lambda s,empty=0 : int(s) if s else empty
+        if filepath and os.path.exists(filepath):
+            processed_img = process_image(filepath,working_scale=self.working_scale_slider.get(),
+                                          post_working_scale=self.processing_scale_slider.get(),
+                                          param1=int_if_not_empty(self.param1_entry.get()),param2=int_if_not_empty(self.param2_entry.get()),
+                                          output_border_width=int_if_not_empty(self.border_width_entry.get(),None))
+            if processed_img is not None:
+                self.processed_img = processed_img
+                w = int(0.9*self.canv.winfo_width())
+                self.img = ImageTk.PhotoImage(image=Image.fromarray(processed_img).resize((w,w)))
+                self.update_msg("")
+                self.update_canv(self.img)
+            else:
+                self.update_msg("Error: a Hough Circle could not be found\nwith the current parameter combination.\nPossible reasons:\n-One of both of the scales are too small\n-Min radius is too high\n-Param2 is too high\n-The image is too small")
+                self.update_canv(None)
+        elif filepath:
+            self.update_msg("Error: Invalid input filepath")
+            self.update_canv(None)
         else:
-            msgs.itemconfig(text_placeholder,text="Error: a Hough Circle could not be found\nwith the current parameter combination.\nPossible reasons:\n-One of both of the scales are too small\n-Min radius is too high\n-Param2 is too high\n-The image is too small")
-            canv.itemconfig(img_placeholder,image=[])
-    elif filepath:
-        msgs.itemconfig(text_placeholder,text="Error: Invalid input filepath")
-        canv.itemconfig(img_placeholder,image=[])
-    else:
-        msgs.itemconfig(text_placeholder,text="Notice: Please type in a filepath")
-        canv.itemconfig(img_placeholder,image=[])
+            self.update_msg("Notice: Please type in a filepath")
+            self.update_canv(None)
 
-def keypress_return(event=None):
-    process_and_display_image()
+    def stack_widgets(self,widget_list):
+        for i,w in enumerate(widget_list):
+            w.grid(column=0,row=0+i)
 
-def stack_widgets(widget_list,base=0):
-    for i,w in enumerate(widget_list):
-        w.grid(column=0,row=base+i)
-
-def do_save():
-    output_filename = out.get()
-    if os.path.exists(os.path.dirname(output_filename)) or len([e for e in os.path.split(output_filename) if e])==1:
-        if output_filename.endswith(".png"):
-            Image.fromarray(root.processed_img).save(output_filename)
-            msgs.itemconfig(text_placeholder,text="Notice: Cropped image saved to %s" % output_filename)
+    def do_save(self):
+        output_filename = self.out.get()
+        if os.path.exists(os.path.dirname(output_filename)) or len([e for e in os.path.split(output_filename) if e])==1:
+            if output_filename.endswith(".png"):
+                Image.fromarray(self.processed_img).save(output_filename)
+                self.update_msg("Notice: Cropped image saved to %s" % output_filename)
+            else:
+                self.update_msg("Error: output format must be PNG")
         else:
-            msgs.itemconfig(text_placeholder,text="Error: output format must be PNG")
-    else:
-        msgs.itemconfig(text_placeholder,text="Error: Save-to folder does not exist\nor no output filepath has been provided")
+            self.update_msg("Error: Save-to folder does not exist\nor no output filepath has been provided")
 
-def cancel_save():
-    msgs.itemconfig(text_placeholder,text="Notice: save cancelled")
+    def cancel_save(self):
+        self.update_msg("Notice: save cancelled")
 
-def check_save():
-    try:
-        root.processed_img
-        output_filename = out.get()
-        if os.path.exists(output_filename):
-            popup = Toplevel(root)
-            close_popup = lambda : popup.destroy()
-            popup.geometry("500x250")
-            popup.title("File Warning")
-            warning_msg = Label(popup,text="Warning: file already exists with that name. Do you want to overwrite it?")
-            warning_msg.pack(padx=3,pady=1,side=TOP)
-            btn_yes = Button(popup,text="Yes",command=lambda : [do_save(),close_popup()])
-            btn_yes.pack(padx=0,pady=1,side=TOP)
-            btn_no = Button(popup,text="No",command=lambda : [cancel_save(),close_popup()])
-            btn_no.pack(padx=0,pady=1,side=TOP)
-        else:
-            do_save()
-    except AttributeError:
-        msgs.itemconfig(text_placeholder,text="Error: No image to save")
+    def check_save(self):
+        try:
+            self.processed_img
+            output_filename = self.out.get()
+            if os.path.exists(output_filename):
+                popup = Toplevel(self)
+                close_popup = lambda : popup.destroy()
+                popup.geometry("500x250")
+                popup.title("File Warning")
+                warning_msg = Label(popup,text="Warning: file already exists with that name. Do you want to overwrite it?")
+                warning_msg.pack(padx=3,pady=1,side=TOP)
+                btn_yes = Button(popup,text="Yes",command=lambda : [self.do_save(),close_popup()])
+                btn_yes.pack(padx=0,pady=1,side=TOP)
+                btn_no = Button(popup,text="No",command=lambda : [self.cancel_save(),close_popup()])
+                btn_no.pack(padx=0,pady=1,side=TOP)
+            else:
+                self.do_save()
+        except AttributeError:
+            self.update_msg("Error: No image to save")
 
-root = Tk()
+    def update_msg(self,text):
+        self.msg.itemconfig(self.text_placeholder,text=text)
 
-root.geometry("700x700")
+    def update_canv(self,img):
+        self.canv.itemconfig(self.img_placeholder,image=img)
 
-root.bind("<Return>",keypress_return)
 
-inputs_frame = Frame(root,bg="lightgrey",borderwidth=5)
-inputs_frame.columnconfigure(0,weight=1)
-inputs_frame.columnconfigure(0,weight=3)
-inputs_frame.place(relheight=1,relwidth=0.3,relx=0.7,y=0)
-
-l_input = Label(inputs_frame,text="Input Filepath:",font=("bold"))
-inp = Entry(inputs_frame)
-
-btn = Button(inputs_frame,text="Process image",width=10,height=5,command=process_and_display_image)
-
-processing_options = Label(inputs_frame,text="Processing Params",font=("bold"))
-
-l_working_scale = Label(inputs_frame,text="Working Scale:")
-working_scale_slider = Scale(inputs_frame,from_=0.05,to=1,resolution=0.05,orient=HORIZONTAL)
-working_scale_slider.set(0.2)
-
-l_processing_scale = Label(inputs_frame,text="Processing Scale\n(times working scale):")
-processing_scale_slider = Scale(inputs_frame,from_=0.05,to=1,resolution=0.05,orient=HORIZONTAL)
-processing_scale_slider.set(0.6)
-
-allow_only = lambda allow : (lambda char : all([c in list(allow) for c in char]))
-allow_int_only = (root.register(allow_only("1234567890")),"%S")
-
-l_border_width = Label(inputs_frame,text="Output Border Width (px):")
-border_width_entry = Entry(inputs_frame,validate="key",vcmd=allow_int_only)
-border_width_entry.insert(0,"4")
-
-advanced_options = Label(inputs_frame,text="Advanced",font=("bold"))
-
-l_param1 = Label(inputs_frame,text="Hough Circle Param1:")
-param1_entry = Entry(inputs_frame,validate="key",vcmd=allow_int_only)
-param1_entry.insert(0,"5")
-
-l_param2 = Label(inputs_frame,text="Hough Circle Param2:")
-param2_entry = Entry(inputs_frame,validate="key",vcmd=allow_int_only)
-param2_entry.insert(0,"50")
-
-l_output = Label(inputs_frame,text="Output Filepath:",font=("bold"))
-out = Entry(inputs_frame)
-
-btn_out = Button(inputs_frame,text="Save image",width=10,height=5,command=check_save)
-
-stack_widgets([l_input,inp,btn,processing_options,l_working_scale,working_scale_slider,l_processing_scale,processing_scale_slider,l_border_width,border_width_entry,advanced_options,l_param1,param1_entry,l_param2,param2_entry,l_output,out,btn_out])
-
-outputs_frame = Frame(root,bg="lightblue",borderwidth=5)
-outputs_frame.columnconfigure(0,weight=1)
-outputs_frame.columnconfigure(0,weight=3)
-outputs_frame.place(relheight=1,relwidth=0.7,relx=0,y=0)
-
-l_output = Label(outputs_frame,text="Output",bg="lightblue")
-l_output.grid(column=0,row=0)
-root.update_idletasks()
-w,h = outputs_frame.winfo_width(),outputs_frame.winfo_height()
-canv = Canvas(outputs_frame,width=0.9*w,height=0.6*h,bg="white")
-canv.grid(column=0,row=1)
-
-l_msgs = Label(outputs_frame,text="Messages",bg="lightblue")
-l_msgs.grid(column=0,row=2)
-msgs = Canvas(outputs_frame,width=0.9*w,height=0.2*h,bg="white")
-msgs.grid(column=0,row=3)
-
-root.update_idletasks()
-wc,hc = canv.winfo_width(),canv.winfo_height()
-img_placeholder = canv.create_image(wc/2,hc/2,anchor=CENTER)
-wm,hm = msgs.winfo_width(),msgs.winfo_height()
-text_placeholder = msgs.create_text(wm/2,hm/2,anchor=CENTER)
-
-root.mainloop()
+if __name__=="__main__": # writing and testing in emacs so had to remove whitespaces: https://stackoverflow.com/a/73388122 by https://stackoverflow.com/users/19555485/donald-duck
+    root = GUI()
+    root.mainloop()
