@@ -25,6 +25,8 @@ class GUI(Tk):
     def __init__(self):
         super().__init__()
         self.geometry("700x700")
+        self.title("Microscope Image Circle Crop")
+        self.tk.call("wm","iconphoto",self._w,PhotoImage(file="icon.png"))
 
         # bind enter/return key to
         self.bind("<Return>",lambda event=None : self.process_and_display_image())
