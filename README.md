@@ -3,9 +3,21 @@ Crop images taken down a microscope to a circle using Hough Circle implemented b
 # Usage
 Run `crop_circle_gui.py`, which should bring up a GUI.
 
+## Requirements
+
 Output format must be `.png`.
 
-The cropped image, which is displayed as the output, may not always be accurate - it may be necessary to change the parameters. The method may also fail for certain types of images. The border width may not always be even throughout the cropped image.
+## Dependencies
+- tkinter
+- PIL
+- cv2
+- numpy
+
+## Limitations
+- This method can be very slow for large images hence two downscales are applied, the first to reduce the image size permanently (i.e. applies to the output image as well), and the second to reduce this image's size before passing it to the (Hough) circle finding function.
+- The cropped image, which is displayed as the output, may not always be accurately cropped - it may be necessary to change the parameters (e.g. increase one or both scales). 
+- The method may fail for certain types of images. 
+- The border width may not always be even throughout the cropped image.
 
 # Example
 Example using synthetic data created by the author using the Voronoi pattern generator in Inkscape and modified in GIMP:

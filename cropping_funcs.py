@@ -15,8 +15,6 @@
 import numpy as np
 import cv2
 
-import matplotlib.pyplot as plt
-
 def zealous_square_crop_circle(r,cx,cy,img):
     n_rows,n_cols,_ = img.shape
 
