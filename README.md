@@ -26,6 +26,7 @@ Example using synthetic data created by the author using the Voronoi pattern gen
 <th width="33%">Input image</th>
 <th width="33%">Input parameters in gui</th>
 <th width="33%">Output image</th>
+</tr>
 <tr>
 <th><img src="./eg/eg_img.jpg" width="100%"></th>
 <th><img src="./eg/inputs.png" width="100%"></th>
