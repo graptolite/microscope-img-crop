@@ -15,58 +15,25 @@
 import numpy as np
 import cv2
 
-def zealous_square_crop_circle(r,cx,cy,img):
-    n_rows,n_cols,_ = img.shape
+from PIL import Image,ImageDraw
 
-    del_rows = []
-    upper_crop = 0
-    upper_crop_found = False
-    for i in range(n_rows):
-        dist_min = abs(i - cy)
-        if dist_min > r:
-            del_rows.append(i)
-            if not upper_crop_found:
-                if upper_crop != i:
-                    upper_crop_found = True
-                else:
-                    upper_crop += 1
-    img = np.delete(img,tuple(del_rows),axis=0)
-#    print("vertical cropping complete")
+def crop_to_circle(working_img,circle):
+    cx,cy,r = circle
 
-    del_cols = []
-    left_crop = 0
-    left_crop_found = False
-    for j in range(n_cols):
-        dist_min = abs(j - cx)
-        if dist_min > r:
-            del_cols.append(j)
-            if not left_crop_found:
-                if left_crop != j:
-                    left_crop_found = True
-                else:
-                    left_crop += 1
-    img = np.delete(img,tuple(del_cols),axis=1)
-#    print("horizontal cropping complete")
-    return img
+    n_rows,n_cols,_ = working_img.shape
 
-def circle_transparency_crop(img):
-    n_rows,n_cols,_ = img.shape
-    if n_rows != n_cols:
-        print("Warning: Input is not a zealously cropped circle - results may not be great")
-    img = np.dstack([img,255*np.ones([n_rows,n_cols,1])])
+    # Crop to just the region of interest.
+    working_img = Image.fromarray(working_img).crop([cx-r,cy-r,cx+r,cy+r])
 
-    r = n_rows/2
-    cy = n_rows/2
-    cx = n_cols/2
+    # New image for mask.
+    size = [2*r,2*r]
+    circle_mask = Image.new("1",size,0)
+    # Draw circle filling the mask image.
+    ImageDraw.Draw(circle_mask).ellipse([0,0] + size,fill=1)
 
-#    print("circular cropping of image with dimensions : %s,%s" % (n_rows,n_cols))
-    for i in range(n_rows):
-        for j in range(n_cols):
-            dist_to_c = np.sqrt((i - cy)**2 + (j - cx)**2)
-            if dist_to_c > r:
-                img[i][j] = [0,0,0,0]
-#    print("circular cropping finished")
-    return img
+    # Set circle mask as alpha.
+    processed_img = np.dstack([working_img,255*np.asarray(circle_mask)])
+    return processed_img
 
 def process_image(image,working_scale:float=0.2,post_working_scale:float=0.6,param1:int=5,param2:int=50,output_border_width:int=4):
     basic_img = cv2.imread(image,cv2.IMREAD_UNCHANGED)
@@ -91,19 +58,14 @@ def process_image(image,working_scale:float=0.2,post_working_scale:float=0.6,par
         circles = np.rint(circles)[0]
         circles = np.array(sorted(circles,key=lambda c : c[2],reverse=True))
         circ = np.uint16(circles[0]/(processing_scale/working_scale))
-        c = (circ[0],circ[1])
+        c = [circ[0],circ[1]]
         r = circ[2]
 
         if output_border_width:
             cv2.circle(working_img,c,r,(0,0,0),output_border_width*2) # multiply border width by 2 as half of thickness lies outside fitted circle
+        r = r + output_border_width
 
-        cx,cy = c
-
-        r = r - 3
-
-        processed_img = zealous_square_crop_circle(r,cx,cy,working_img)
-        processed_img = circle_transparency_crop(processed_img)
-
+        processed_img = crop_to_circle(working_img,c + [r])
         processed_img = np.uint8(processed_img)
     else:
         processed_img = None
